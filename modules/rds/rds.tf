@@ -3,7 +3,7 @@ resource "aws_db_subnet_group" "this" {
 }
 
 resource "aws_db_instance" "this" {
-  allocated_storage = 20
+  allocated_storage = 10
   engine            = "mysql"
   instance_class    = "db.t3.micro"
 
@@ -17,4 +17,8 @@ resource "aws_db_instance" "this" {
   vpc_security_group_ids = [var.security_group_id]
 
   skip_final_snapshot = true
+
+  tags = {
+    Name = "rds_instance"
+  }
 }

@@ -1,10 +1,18 @@
 resource "aws_launch_template" "lt" {
   image_id = var.ami_id != null ? var.ami_id : data.aws_ssm_parameter.al2023.value
   instance_type = "t3.micro"
+  key_name = var.key_name
 
   network_interfaces {
     associate_public_ip_address = true
     security_groups             = [var.security_group_id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "capstone-ec2-instance"
+    }
   }
 }
 

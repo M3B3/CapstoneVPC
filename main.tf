@@ -45,6 +45,7 @@ module "asg" {
   subnet_ids        = module.subnets.public_subnet_ids
   security_group_id = module.security.web_sg
   target_group_arn  = module.alb.target_group_arn
+  key_name = var.key_name
 }
 
 module "rds" {
