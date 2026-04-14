@@ -10,7 +10,6 @@ variable "azs" {
   ]
 }
 
-# ⚠️ Based on 192.168.0.0/26 (64 IPs total)
 variable "public_subnets" {
   type = list(string)
   default = [
@@ -18,8 +17,6 @@ variable "public_subnets" {
     "192.168.0.16/28"   # AZ2 public
   ]
 }
-
-
 
 variable "private_subnets" {
   type = list(string)
