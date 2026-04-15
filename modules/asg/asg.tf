@@ -1,4 +1,5 @@
 resource "aws_launch_template" "lt" {
+  name_prefix = "capstone-wordpress-"
   image_id = var.ami_id != null ? var.ami_id : data.aws_ssm_parameter.al2023.value
   instance_type = "t3.micro"
   key_name = var.key_name
@@ -14,6 +15,12 @@ resource "aws_launch_template" "lt" {
       Name = "capstone-ec2-instance"
     }
   }
+  user_data = base64encode(templatefile("${path.root}/modules/scripts/user_data.sh", {
+    db_endpoint = var.db_endpoint
+    db_name     = var.db_name
+    db_user     = var.db_username
+    db_password = var.db_password
+  }))
 }
 
 resource "aws_autoscaling_group" "asg" {
@@ -21,7 +28,7 @@ resource "aws_autoscaling_group" "asg" {
   max_size         = 3
   min_size         = 2
 
-  vpc_zone_identifier = var.private_subnet_ids
+  vpc_zone_identifier = var.public_subnet_ids
 
   launch_template {
     id      = aws_launch_template.lt.id

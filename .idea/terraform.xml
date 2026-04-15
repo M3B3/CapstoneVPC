@@ -2,5 +2,10 @@
 <project version="4">
   <component name="TerraformProjectSettings">
     <option name="toolPath" value="/usr/bin/terraform" />
+    <option name="ignoredTemplateCandidatePaths">
+      <set>
+        <option value="file://$PROJECT_DIR$/modules/scripts/user_data.sh" />
+      </set>
+    </option>
   </component>
 </project>

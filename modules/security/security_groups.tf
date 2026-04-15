@@ -1,4 +1,4 @@
-resource "aws_security_group" "alb" {
+resource "aws_security_group" "alb_sg" {
   vpc_id = var.vpc_id
 
   tags = {
@@ -11,9 +11,16 @@ resource "aws_security_group" "alb" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 }
 
-resource "aws_security_group" "web" {
+resource "aws_security_group" "web_sg" {
   vpc_id = var.vpc_id
 
   tags = {
@@ -25,7 +32,7 @@ resource "aws_security_group" "web" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   ingress {
@@ -44,9 +51,8 @@ resource "aws_security_group" "web" {
   }
 }
 
-resource "aws_security_group" "db" {
+resource "aws_security_group" "db_sg" {
   vpc_id = var.vpc_id
-
 
   tags = {
     Name = "aws_sg_database"
@@ -56,11 +62,11 @@ resource "aws_security_group" "db" {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    security_groups = [aws_security_group.web.id]
+    security_groups = [aws_security_group.web_sg.id]
   }
 }
 
 
-output "alb_sg" { value = aws_security_group.alb.id }
-output "web_sg" { value = aws_security_group.web.id }
-output "db_sg" { value = aws_security_group.db.id }
+output "alb_sg_id" { value = aws_security_group.alb_sg.id }
+output "web_sg_id" { value = aws_security_group.web_sg.id }
+output "db_sg_id" { value = aws_security_group.db_sg.id }
