@@ -43,3 +43,4 @@ variable "db_password" {
   description = "⚠️ Change in production"
   default     = "ChangeMe123!"
 }
+

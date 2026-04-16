@@ -20,6 +20,7 @@ resource "aws_launch_template" "lt" {
     db_name     = var.db_name
     db_user     = var.db_username
     db_password = var.db_password
+    efs_dns_name = var.efs_dns_name
   }))
 }
 

@@ -1,5 +1,5 @@
 resource "aws_instance" "bastion" {
-  ami           = data.aws_ami.amazon_linux.id
+  ami           = data.aws_ami.amazon_linux_2023.id
   instance_type = "t3.micro"
   subnet_id                   = var.public_subnet_ids[0]
   associate_public_ip_address = true
@@ -36,15 +36,19 @@ resource "aws_security_group" "bastion_sg" {
   }
 }
 
-data "aws_ami" "amazon_linux" {
+data "aws_ami" "amazon_linux_2023" {
   most_recent = true
   owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["al2023-ami-*-x86_64"]
+  }
+
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
   }
 }
-
 
 output "bastion_sg"  { value = aws_security_group.bastion_sg.id }

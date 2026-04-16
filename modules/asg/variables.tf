@@ -11,3 +11,7 @@ variable "db_endpoint" {}
 variable "db_name" {}
 variable "db_username" {}
 variable "db_password" {sensitive = true}
+
+variable "efs_dns_name" {
+  description = "EFS DNS name for WordPress uploads mount"
+}

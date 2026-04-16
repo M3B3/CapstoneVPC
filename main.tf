@@ -52,6 +52,7 @@ module "asg" {
   db_name           = module.rds.db_name
   db_username       = module.rds.db_username
   db_password       = var.db_password
+  efs_dns_name      = module.efs.efs_dns_name
 }
 
 module "rds" {
@@ -62,4 +63,10 @@ module "rds" {
   username          = var.db_user
   password          = var.db_password
   depends_on        = [module.security]
+}
+
+module "efs" {
+  source     = "./modules/efs"
+  subnet_ids = module.subnets.public_subnet_ids
+  efs_sg_id  = module.security.efs_sg_id
 }
