@@ -1,4 +1,5 @@
 resource "aws_lb" "this" {
+  name               = "capstone-alb"
   load_balancer_type = "application"
   subnets            = var.public_subnet_ids
   security_groups    = [var.security_group_id]

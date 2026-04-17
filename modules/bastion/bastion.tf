@@ -52,3 +52,4 @@ data "aws_ami" "amazon_linux_2023" {
 }
 
 output "bastion_sg"  { value = aws_security_group.bastion_sg.id }
+output "public_ip"   { value = aws_instance.bastion.public_ip }

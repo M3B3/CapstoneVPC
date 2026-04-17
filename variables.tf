@@ -26,10 +26,6 @@ variable "private_subnets" {
   ]
 }
 
-variable "key_name" {
-  description = "SSH key for EC2"
-  default     = "vockey"
-}
 
 variable "db_name" {
   default = "appdb"
