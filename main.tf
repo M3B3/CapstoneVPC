@@ -70,3 +70,7 @@ module "efs" {
   subnet_ids = module.subnets.public_subnet_ids
   efs_sg_id  = module.security.efs_sg_id
 }
+
+output "wordpress_url" {
+  value = "http://${module.alb.wordpress_url}"
+}
