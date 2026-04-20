@@ -1,5 +1,12 @@
 
 terraform {
+  cloud {
+    organization = "M3B3_org"
+    workspaces {
+      name = "CapstoneVPC"
+    }
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
