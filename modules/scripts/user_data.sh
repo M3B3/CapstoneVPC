@@ -2,7 +2,7 @@
 yum update -y
 
 # Install Apache, PHP, MySQL client
-yum install -y httpd php php-mysqli wget amazon-efs-utils
+yum install -y httpd php php-mysqli mariadb105 wget amazon-efs-utils
 
 systemctl start httpd
 systemctl enable httpd
