@@ -1,6 +1,6 @@
 resource "aws_instance" "bastion" {
-  ami           = data.aws_ami.amazon_linux_2023.id
-  instance_type = "t3.micro"
+  ami                         = data.aws_ami.amazon_linux_2023.id
+  instance_type               = "t3.micro"
   subnet_id                   = var.public_subnet_ids[0]
   associate_public_ip_address = true
   key_name                    = var.key_name
@@ -19,21 +19,25 @@ resource "aws_security_group" "bastion_sg" {
   tags = {
     Name = "bastion-sg"
   }
+}
 
-  ingress {
-    description = "SSH from my IP"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  // ToDo obtain ip dynamically
-  }
+resource "aws_security_group_rule" "bastion_ingress_ssh" {
+  type              = "ingress"
+  security_group_id = aws_security_group.bastion_sg.id
+  description       = "SSH from my IP"
+  from_port         = 22
+  to_port           = 22
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"] # ToDo obtain ip dynamically
+}
 
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group_rule" "bastion_egress_all" {
+  type              = "egress"
+  security_group_id = aws_security_group.bastion_sg.id
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
 }
 
 data "aws_ami" "amazon_linux_2023" {
