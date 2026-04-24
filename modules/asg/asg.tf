@@ -15,7 +15,7 @@ resource "aws_launch_template" "lt" {
       Name = "capstone-ec2-instance"
     }
   }
-  user_data = base64encode(templatefile("${path.root}/modules/scripts/user_data.sh", {
+  user_data = base64gzip(templatefile("${path.root}/modules/scripts/user_data.sh", {
     db_endpoint = var.db_endpoint
     db_name     = var.db_name
     db_user     = var.db_username
