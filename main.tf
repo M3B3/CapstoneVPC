@@ -12,14 +12,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
-    tls = {
-      source  = "hashicorp/tls"
-      version = "~> 4.0"
-    }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 2.0"
-    }
     null = {
       source  = "hashicorp/null"
       version = "~> 3.0"
@@ -31,23 +23,9 @@ provider "aws" {
   region = var.region
 }
 
-# Generate RSA key pair
-resource "tls_private_key" "deployer" {
-  algorithm = "RSA"
-  rsa_bits  = 4096
-}
-
-# Upload public key to AWS in the configured region
 resource "aws_key_pair" "deployer" {
   key_name   = "capstone-key"
-  public_key = tls_private_key.deployer.public_key_openssh
-}
-
-# Write private key to local file
-resource "local_file" "private_key" {
-  content         = tls_private_key.deployer.private_key_pem
-  filename        = "${path.module}/capstone.pem"
-  file_permission = "0400"
+  public_key = file("${path.module}/capstone-key.pub")
 }
 
 module "vpc" {
@@ -121,18 +99,18 @@ module "efs" {
 
 # Copy capstone.pem to the bastion after it boots
 resource "null_resource" "copy_key_to_bastion" {
-  depends_on = [module.bastion, local_file.private_key]
+  depends_on = [module.bastion]
 
   connection {
     type        = "ssh"
     host        = module.bastion.public_ip
     user        = "ec2-user"
-    private_key = tls_private_key.deployer.private_key_pem
+    private_key = var.private_key_pem
     timeout     = "3m"
   }
 
   provisioner "file" {
-    source      = local_file.private_key.filename
+    content     = var.private_key_pem
     destination = "/home/ec2-user/capstone.pem"
   }
 
@@ -146,10 +124,5 @@ output "wordpress_url" {
 }
 
 output "private_key_path" {
-  value = local_file.private_key.filename
-}
-
-output "private_key_pem" {
-  value     = tls_private_key.deployer.private_key_pem
-  sensitive = true
+  value = "${path.module}/capstone.pem"
 }

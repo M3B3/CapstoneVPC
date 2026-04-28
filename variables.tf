@@ -44,3 +44,8 @@ variable "db_password" {
   default     = "ChangeMe123!"
 }
 
+variable "private_key_pem" {
+  description = "PEM-encoded private key matching the capstone-key AWS key pair"
+  sensitive   = true
+}
+
