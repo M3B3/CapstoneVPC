@@ -349,6 +349,19 @@ function vv_handle_store_post() {
         if ($qty > 0) $cart[$id] = $qty; else unset($cart[$id]);
         vv_save_cart($cart);
 
+    } elseif ($act === 'add_record' && current_user_can('manage_options')) {
+        $wpdb->insert($rt, [
+            'title'           => sanitize_text_field($_POST['title']),
+            'artist'          => sanitize_text_field($_POST['artist']),
+            'genre'           => sanitize_text_field($_POST['genre'] ?? 'Other'),
+            'year_released'   => intval($_POST['year_released'] ?? 0) ?: null,
+            'price'           => round(floatval($_POST['price'] ?? 0), 2),
+            'condition_grade' => sanitize_text_field($_POST['condition_grade'] ?? 'Good'),
+            'cover_image_url' => esc_url_raw($_POST['cover_image_url'] ?? ''),
+            'stock'           => max(0, intval($_POST['stock'] ?? 0)),
+            'description'     => sanitize_textarea_field($_POST['description'] ?? ''),
+        ]);
+
     } elseif ($act === 'order') {
         $cart = vv_get_cart();
         if (!empty($cart)) {
@@ -391,7 +404,7 @@ function vv_handle_store_post() {
         }
     }
 
-    wp_safe_redirect(wp_get_referer() ?: home_url('/'));
+    wp_redirect(wp_get_raw_referer() ?: home_url('/'));
     exit;
 }
 
@@ -522,6 +535,39 @@ function vv_store() {
                 <button type="submit" class="vv-btn vv-btn-order" style="margin-top:14px">Place Order &mdash; $<?php echo number_format($grand, 2); ?></button>
             </form>
         </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (current_user_can('manage_options')): ?>
+    <div class="vv-cart-box" style="background:#fffaf0;border-color:#f0c674">
+        <h3 style="border-bottom-color:#c79235">Admin &mdash; Add New Record</h3>
+        <form method="post" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <?php wp_nonce_field('vv_store_action', 'vv_nonce'); ?>
+            <input type="hidden" name="vv_act" value="add_record">
+            <label style="font-size:.88em">Title<br>
+                <input name="title" required style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em">Artist<br>
+                <input name="artist" required style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em">Genre<br>
+                <input name="genre" placeholder="Rock, Jazz, Pop..." style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em">Year<br>
+                <input name="year_released" type="number" min="1900" max="2099" style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em">Price ($)<br>
+                <input name="price" type="number" step="0.01" min="0" required style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em">Stock<br>
+                <input name="stock" type="number" min="0" value="1" required style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em">Condition<br>
+                <select name="condition_grade" style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px">
+                    <?php foreach (['New','Mint','Excellent','Good','Fair','Poor'] as $c): ?>
+                        <option value="<?php echo $c; ?>" <?php selected($c, 'Good'); ?>><?php echo $c; ?></option>
+                    <?php endforeach; ?>
+                </select></label>
+            <label style="font-size:.88em">Cover Image URL<br>
+                <input name="cover_image_url" type="url" placeholder="https://..." style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></label>
+            <label style="font-size:.88em;grid-column:1/-1">Description<br>
+                <textarea name="description" rows="2" style="width:100%;padding:7px;border:1px solid #ccc;border-radius:4px"></textarea></label>
+            <button type="submit" class="vv-btn" style="grid-column:1/-1;background:#c79235">Add Record</button>
+        </form>
     </div>
     <?php endif; ?>
 
