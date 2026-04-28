@@ -309,83 +309,85 @@ function vv_admin_orders() {
     <?php
 }
 
+add_action('init', 'vv_handle_store_post');
+function vv_handle_store_post() {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['vv_nonce'])) return;
+    if (!wp_verify_nonce($_POST['vv_nonce'], 'vv_store_action')) return;
+
+    global $wpdb;
+    $rt  = $wpdb->prefix . 'vinyl_records';
+    $ot  = $wpdb->prefix . 'vinyl_orders';
+    $act = sanitize_text_field($_POST['vv_act'] ?? '');
+
+    if ($act === 'add') {
+        $cart = vv_get_cart();
+        $id   = intval($_POST['rid']);
+        if ($id > 0) $cart[$id] = ($cart[$id] ?? 0) + 1;
+        vv_save_cart($cart);
+
+    } elseif ($act === 'remove') {
+        $cart = vv_get_cart();
+        unset($cart[intval($_POST['rid'])]);
+        vv_save_cart($cart);
+
+    } elseif ($act === 'qty') {
+        $cart = vv_get_cart();
+        $id   = intval($_POST['rid']);
+        $qty  = intval($_POST['qty']);
+        if ($qty > 0) $cart[$id] = $qty; else unset($cart[$id]);
+        vv_save_cart($cart);
+
+    } elseif ($act === 'order') {
+        $cart = vv_get_cart();
+        if (!empty($cart)) {
+            $items = []; $total = 0.0;
+            foreach ($cart as $id => $qty) {
+                $rec = $wpdb->get_row($wpdb->prepare(
+                    "SELECT * FROM $rt WHERE id=%d AND stock>=%d", $id, $qty
+                ));
+                if ($rec) {
+                    $items[] = [
+                        'id'     => $id,
+                        'title'  => $rec->title,
+                        'artist' => $rec->artist,
+                        'qty'    => $qty,
+                        'price'  => (float)$rec->price,
+                    ];
+                    $total += (float)$rec->price * $qty;
+                    $wpdb->query($wpdb->prepare(
+                        "UPDATE $rt SET stock=stock-%d WHERE id=%d", $qty, $id
+                    ));
+                }
+            }
+            if (!empty($items)) {
+                $wpdb->insert($ot, [
+                    'customer_name'    => sanitize_text_field($_POST['cname']),
+                    'customer_email'   => sanitize_email($_POST['cemail']),
+                    'customer_address' => sanitize_textarea_field($_POST['caddress']),
+                    'items_json'       => wp_json_encode($items),
+                    'total'            => $total,
+                    'status'           => 'pending',
+                ]);
+                vv_save_cart([]);
+                setcookie('vv_flash', (string)$total, [
+                    'expires'  => time() + 120,
+                    'path'     => defined('COOKIEPATH') ? COOKIEPATH : '/',
+                    'httponly' => true,
+                    'samesite' => 'Lax',
+                ]);
+            }
+        }
+    }
+
+    wp_safe_redirect(wp_get_referer() ?: home_url('/'));
+    exit;
+}
+
 add_shortcode('vinyl_store', 'vv_store');
 
 function vv_store() {
     global $wpdb;
     $rt = $wpdb->prefix . 'vinyl_records';
-    $ot = $wpdb->prefix . 'vinyl_orders';
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['vv_nonce'])) {
-        if (!wp_verify_nonce($_POST['vv_nonce'], 'vv_store_action'))
-            return '<p>Security error.</p>';
-
-        $act = sanitize_text_field($_POST['vv_act'] ?? '');
-
-        if ($act === 'add') {
-            $cart = vv_get_cart();
-            $id   = intval($_POST['rid']);
-            if ($id > 0) $cart[$id] = ($cart[$id] ?? 0) + 1;
-            vv_save_cart($cart);
-
-        } elseif ($act === 'remove') {
-            $cart = vv_get_cart();
-            unset($cart[intval($_POST['rid'])]);
-            vv_save_cart($cart);
-
-        } elseif ($act === 'qty') {
-            $cart = vv_get_cart();
-            $id   = intval($_POST['rid']);
-            $qty  = intval($_POST['qty']);
-            if ($qty > 0) $cart[$id] = $qty; else unset($cart[$id]);
-            vv_save_cart($cart);
-
-        } elseif ($act === 'order') {
-            $cart = vv_get_cart();
-            if (!empty($cart)) {
-                $items = []; $total = 0.0;
-                foreach ($cart as $id => $qty) {
-                    $rec = $wpdb->get_row($wpdb->prepare(
-                        "SELECT * FROM $rt WHERE id=%d AND stock>=%d", $id, $qty
-                    ));
-                    if ($rec) {
-                        $items[] = [
-                            'id'     => $id,
-                            'title'  => $rec->title,
-                            'artist' => $rec->artist,
-                            'qty'    => $qty,
-                            'price'  => (float)$rec->price,
-                        ];
-                        $total += (float)$rec->price * $qty;
-                        $wpdb->query($wpdb->prepare(
-                            "UPDATE $rt SET stock=stock-%d WHERE id=%d", $qty, $id
-                        ));
-                    }
-                }
-                if (!empty($items)) {
-                    $wpdb->insert($ot, [
-                        'customer_name'    => sanitize_text_field($_POST['cname']),
-                        'customer_email'   => sanitize_email($_POST['cemail']),
-                        'customer_address' => sanitize_textarea_field($_POST['caddress']),
-                        'items_json'       => wp_json_encode($items),
-                        'total'            => $total,
-                        'status'           => 'pending',
-                    ]);
-                    vv_save_cart([]);
-                    setcookie('vv_flash', (string)$total, [
-                        'expires'  => time() + 120,
-                        'path'     => defined('COOKIEPATH') ? COOKIEPATH : '/',
-                        'httponly' => true,
-                        'samesite' => 'Lax',
-                    ]);
-                }
-            }
-            wp_redirect(get_permalink());
-            exit;
-        }
-        wp_redirect(get_permalink());
-        exit;
-    }
 
     $cart   = vv_get_cart();
     $genre  = sanitize_text_field($_GET['genre']  ?? '');
@@ -569,45 +571,6 @@ function vv_store() {
     <?php endif; ?>
 </div>
 <?php
-    if ( is_user_logged_in() ) :
-        ?>
-        <h3>Add Record</h3>
-        <form method="post">
-            <?php wp_nonce_field( 'crud_app_frontend' ); ?>
-            <input type="hidden" name="crud_action" value="create">
-            <p><input type="text" name="title" placeholder="Title" required style="width:100%;padding:6px"></p>
-            <p><textarea name="description" placeholder="Description" rows="3" style="width:100%;padding:6px"></textarea></p>
-            <p><button type="submit">Add Record</button></p>
-        </form>
-        <?php
-    endif;
-
-    echo '<h3>Records</h3>';
-    if ( empty( $records ) ) {
-        echo '<p>No records yet.</p>';
-    } else {
-        echo '<ul style="list-style:none;padding:0">';
-        foreach ( $records as $r ) {
-            echo '<li style="padding:8px 0;border-bottom:1px solid #eee">';
-            echo '<strong>' . esc_html( $r->title ) . '</strong>';
-            if ( $r->description ) {
-                echo ' &mdash; ' . esc_html( $r->description );
-            }
-            if ( is_user_logged_in() ) {
-                echo ' <form method="post" style="display:inline">';
-                wp_nonce_field( 'crud_app_frontend' );
-                echo '<input type="hidden" name="crud_action" value="delete">';
-                echo '<input type="hidden" name="record_id" value="' . esc_attr( $r->id ) . '">';
-                echo '<button type="submit" onclick="return confirm(\'Delete?\')" '
-                   . 'style="background:none;border:none;color:red;cursor:pointer">&#10005;</button>';
-                echo '</form>';
-            }
-            echo '</li>';
-        }
-        echo '</ul>';
-    }
-
-    echo '</div>';
     return ob_get_clean();
 }
 PLUGIN_EOF
