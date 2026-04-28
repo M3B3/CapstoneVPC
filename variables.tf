@@ -49,3 +49,20 @@ variable "private_key_pem" {
   sensitive   = true
 }
 
+variable "wp_admin_user" {
+  default = "admin"
+}
+
+variable "wp_admin_password" {
+  description = "WordPress admin password — set in HCP as a sensitive variable"
+  sensitive   = true
+}
+
+variable "wp_admin_email" {
+  default = "admin@example.com"
+}
+
+variable "wp_site_title" {
+  default = "Vinyl Vault"
+}
+

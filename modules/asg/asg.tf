@@ -16,11 +16,16 @@ resource "aws_launch_template" "lt" {
     }
   }
   user_data = base64gzip(templatefile("${path.root}/modules/scripts/user_data.sh", {
-    db_endpoint = var.db_endpoint
-    db_name     = var.db_name
-    db_user     = var.db_username
-    db_password = var.db_password
-    efs_dns_name = var.efs_dns_name
+    db_endpoint       = var.db_endpoint
+    db_name           = var.db_name
+    db_user           = var.db_username
+    db_password       = var.db_password
+    efs_dns_name      = var.efs_dns_name
+    alb_dns_name      = var.alb_dns_name
+    wp_admin_user     = var.wp_admin_user
+    wp_admin_password = var.wp_admin_password
+    wp_admin_email    = var.wp_admin_email
+    wp_site_title     = var.wp_site_title
   }))
 }
 

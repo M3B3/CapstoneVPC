@@ -129,6 +129,64 @@ function vv_install() {
             ]);
         }
     }
+
+    $store = get_page_by_path('vinyl-store');
+    if (!$store) {
+        $page_id = wp_insert_post([
+            'post_title'   => 'Vinyl Store',
+            'post_name'    => 'vinyl-store',
+            'post_content' => '[vinyl_store]',
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
+        ]);
+    } else {
+        $page_id = $store->ID;
+    }
+    update_option('show_on_front', 'page');
+    update_option('page_on_front', $page_id);
+    update_option('page_for_posts', 0);
+}
+
+add_action('admin_menu', 'vv_hide_blog_menus', 999);
+function vv_hide_blog_menus() {
+    remove_menu_page('edit.php');
+    remove_menu_page('edit-comments.php');
+}
+
+add_action('admin_init', 'vv_disable_comments_admin');
+function vv_disable_comments_admin() {
+    update_option('default_comment_status', 'closed');
+    update_option('default_ping_status', 'closed');
+    foreach (get_post_types() as $pt) {
+        if (post_type_supports($pt, 'comments')) {
+            remove_post_type_support($pt, 'comments');
+            remove_post_type_support($pt, 'trackbacks');
+        }
+    }
+    remove_meta_box('dashboard_recent_comments', 'dashboard', 'normal');
+    remove_meta_box('dashboard_quick_press',    'dashboard', 'side');
+    remove_meta_box('dashboard_primary',        'dashboard', 'side');
+}
+
+add_filter('comments_open',  '__return_false', 20);
+add_filter('pings_open',     '__return_false', 20);
+add_filter('comments_array', '__return_empty_array', 10);
+
+add_action('wp_before_admin_bar_render', 'vv_strip_admin_bar');
+function vv_strip_admin_bar() {
+    global $wp_admin_bar;
+    $wp_admin_bar->remove_menu('comments');
+    $wp_admin_bar->remove_menu('new-post');
+}
+
+add_action('template_redirect', 'vv_block_comment_pages');
+function vv_block_comment_pages() {
+    if (is_comment_feed() || is_singular('post') || is_archive() || is_home()) {
+        if (!is_front_page()) {
+            wp_safe_redirect(home_url('/'));
+            exit;
+        }
+    }
 }
 
 function vv_get_cart() {
@@ -636,10 +694,32 @@ curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.ph
 chmod +x wp-cli.phar
 mv wp-cli.phar /usr/local/bin/wp
 
-# Wait for DB to be reachable, then activate plugin if WordPress is already installed
+# Wait for DB to be reachable
 until wp --allow-root --path=/var/www/html db check --quiet 2>/dev/null; do sleep 5; done
-wp --allow-root --path=/var/www/html core is-installed 2>/dev/null && \
-    wp --allow-root --path=/var/www/html plugin activate vinyl-vault 2>/dev/null || true
+
+# Install WordPress if not already installed (idempotent — second instance sees it as installed)
+if ! wp --allow-root --path=/var/www/html core is-installed 2>/dev/null; then
+    wp --allow-root --path=/var/www/html core install \
+        --url="http://${alb_dns_name}" \
+        --title="${wp_site_title}" \
+        --admin_user="${wp_admin_user}" \
+        --admin_password="${wp_admin_password}" \
+        --admin_email="${wp_admin_email}" \
+        --skip-email
+fi
+
+# Activate plugin (vv_install runs and creates the store page + sets it as front page)
+wp --allow-root --path=/var/www/html plugin activate vinyl-vault || true
+
+# Belt-and-suspenders: enforce settings via WP-CLI in case plugin already activated previously
+STORE_ID=$(wp --allow-root --path=/var/www/html post list --post_type=page --name=vinyl-store --field=ID 2>/dev/null | head -1)
+if [ -n "$STORE_ID" ]; then
+    wp --allow-root --path=/var/www/html option update show_on_front page
+    wp --allow-root --path=/var/www/html option update page_on_front "$STORE_ID"
+fi
+wp --allow-root --path=/var/www/html option update page_for_posts 0
+wp --allow-root --path=/var/www/html option update default_comment_status closed
+wp --allow-root --path=/var/www/html option update default_ping_status closed
 
 chown -R apache:apache /var/www/html/wp-content/plugins
 

@@ -79,6 +79,11 @@ module "asg" {
   db_username       = module.rds.db_username
   db_password       = var.db_password
   efs_dns_name      = module.efs.efs_dns_name
+  alb_dns_name      = module.alb.wordpress_url
+  wp_admin_user     = var.wp_admin_user
+  wp_admin_password = var.wp_admin_password
+  wp_admin_email    = var.wp_admin_email
+  wp_site_title     = var.wp_site_title
 }
 
 module "rds" {
