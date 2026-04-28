@@ -27,6 +27,10 @@ variable "private_subnets" {
 }
 
 
+variable "key_name" {
+  default = "capstone-key"
+}
+
 variable "db_name" {
   default = "appdb"
 }

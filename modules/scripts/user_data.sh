@@ -131,13 +131,24 @@ function vv_install() {
     }
 }
 
-add_action('init', 'vv_session_start', 1);
-function vv_session_start() {
-    if (!session_id() && !headers_sent()) session_start();
+function vv_get_cart() {
+    if (empty($_COOKIE['vv_cart'])) return [];
+    $data = json_decode(stripslashes($_COOKIE['vv_cart']), true);
+    return is_array($data) ? $data : [];
 }
 
-function vv_get_cart()       { return $_SESSION['vv_cart'] ?? []; }
-function vv_save_cart($cart) { $_SESSION['vv_cart'] = $cart; }
+function vv_save_cart($cart) {
+    $val     = wp_json_encode($cart);
+    $expires = empty($cart) ? time() - 3600 : time() + 86400;
+    setcookie('vv_cart', $val, [
+        'expires'  => $expires,
+        'path'     => defined('COOKIEPATH') ? COOKIEPATH : '/',
+        'domain'   => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    $_COOKIE['vv_cart'] = $val;
+}
 
 add_action('admin_menu', 'vv_admin_menu');
 function vv_admin_menu() {
@@ -361,8 +372,12 @@ function vv_store() {
                         'status'           => 'pending',
                     ]);
                     vv_save_cart([]);
-                    $_SESSION['vv_ok']    = true;
-                    $_SESSION['vv_total'] = $total;
+                    setcookie('vv_flash', (string)$total, [
+                        'expires'  => time() + 120,
+                        'path'     => defined('COOKIEPATH') ? COOKIEPATH : '/',
+                        'httponly' => true,
+                        'samesite' => 'Lax',
+                    ]);
                 }
             }
             wp_redirect(get_permalink());
@@ -440,11 +455,14 @@ function vv_store() {
         <p>Rare &amp; Classic Records &mdash; Curated for True Music Lovers</p>
     </div>
 
-    <?php if (!empty($_SESSION['vv_ok'])): ?>
+    <?php if (!empty($_COOKIE['vv_flash'])):
+        $flash_total = (float)$_COOKIE['vv_flash'];
+        setcookie('vv_flash', '', ['expires' => time() - 3600, 'path' => defined('COOKIEPATH') ? COOKIEPATH : '/']);
+        unset($_COOKIE['vv_flash']); ?>
     <div class="vv-alert">
-        <strong>Order placed!</strong> Thank you &mdash; your total was $<?php echo number_format($_SESSION['vv_total'], 2); ?>. We will be in touch soon.
+        <strong>Order placed!</strong> Thank you &mdash; your total was $<?php echo number_format($flash_total, 2); ?>. We will be in touch soon.
     </div>
-    <?php unset($_SESSION['vv_ok'], $_SESSION['vv_total']); endif; ?>
+    <?php endif; ?>
 
     <?php
     $cart_rows = []; $grand = 0.0;
