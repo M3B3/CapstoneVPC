@@ -367,6 +367,18 @@ function vv_admin_orders() {
     <?php
 }
 
+add_action('wp_head', 'vv_hide_theme_chrome', 99);
+function vv_hide_theme_chrome() {
+    echo '<style>
+    .wp-block-navigation,
+    header .wp-block-navigation,
+    .wp-block-template-part nav { display: none !important; }
+    footer.wp-block-template-part,
+    .wp-block-site-credit,
+    .wp-block-template-part--footer { display: none !important; }
+    </style>';
+}
+
 add_action('init', 'vv_clear_flash_cookie');
 function vv_clear_flash_cookie() {
     if (!empty($_COOKIE['vv_flash'])) {
@@ -683,11 +695,22 @@ function vv_store() {
     <?php endforeach; ?>
     </div>
     <?php endif; ?>
+
+    <div style="text-align:center;color:#999;font-size:.8em;margin-top:30px;padding:20px;border-top:1px solid #eee">
+        Served by: <code><?php echo esc_html(gethostname()); ?></code>
+    </div>
 </div>
 <?php
     return ob_get_clean();
 }
 PLUGIN_EOF
+
+# Drop a tiny ALB-test endpoint that just returns the instance hostname
+cat > /var/www/html/whoami.php << 'WHOAMI_EOF'
+<?php
+header('Content-Type: text/plain');
+echo gethostname() . "\n";
+WHOAMI_EOF
 
 # Install WP-CLI
 curl -sO https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
@@ -710,6 +733,12 @@ fi
 
 # Activate plugin (vv_install runs and creates the store page + sets it as front page)
 wp --allow-root --path=/var/www/html plugin activate vinyl-vault || true
+
+# Remove default Sample Page
+SAMPLE_ID=$(wp --allow-root --path=/var/www/html post list --post_type=page --name=sample-page --field=ID 2>/dev/null | head -1)
+if [ -n "$SAMPLE_ID" ]; then
+    wp --allow-root --path=/var/www/html post delete "$SAMPLE_ID" --force
+fi
 
 # Belt-and-suspenders: enforce settings via WP-CLI in case plugin already activated previously
 STORE_ID=$(wp --allow-root --path=/var/www/html post list --post_type=page --name=vinyl-store --field=ID 2>/dev/null | head -1)
