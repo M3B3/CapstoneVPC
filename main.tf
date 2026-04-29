@@ -16,6 +16,14 @@ terraform {
       source  = "hashicorp/null"
       version = "~> 3.0"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
+    local = {
+      source  = "hashicorp/local"
+      version = "~> 2.0"
+    }
   }
 }
 
@@ -23,9 +31,20 @@ provider "aws" {
   region = var.region
 }
 
+resource "tls_private_key" "deployer" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
 resource "aws_key_pair" "deployer" {
   key_name   = "capstone-key"
-  public_key = file("${path.module}/capstone-key.pub")
+  public_key = tls_private_key.deployer.public_key_openssh
+}
+
+resource "local_sensitive_file" "private_key" {
+  content         = tls_private_key.deployer.private_key_pem
+  filename        = "${path.module}/capstone.pem"
+  file_permission = "0400"
 }
 
 module "vpc" {
@@ -110,12 +129,12 @@ resource "null_resource" "copy_key_to_bastion" {
     type        = "ssh"
     host        = module.bastion.public_ip
     user        = "ec2-user"
-    private_key = var.private_key_pem
+    private_key = tls_private_key.deployer.private_key_pem
     timeout     = "3m"
   }
 
   provisioner "file" {
-    content     = var.private_key_pem
+    content     = tls_private_key.deployer.private_key_pem
     destination = "/home/ec2-user/capstone.pem"
   }
 
@@ -126,8 +145,4 @@ resource "null_resource" "copy_key_to_bastion" {
 
 output "wordpress_url" {
   value = "http://${module.alb.wordpress_url}"
-}
-
-output "private_key_path" {
-  value = "${path.module}/capstone.pem"
 }
