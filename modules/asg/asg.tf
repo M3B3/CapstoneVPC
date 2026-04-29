@@ -31,7 +31,7 @@ resource "aws_launch_template" "lt" {
 
 resource "aws_autoscaling_group" "asg" {
   desired_capacity = 2
-  max_size         = 3
+  max_size         = 5
   min_size         = 2
 
   vpc_zone_identifier = var.public_subnet_ids
@@ -46,4 +46,17 @@ resource "aws_autoscaling_group" "asg" {
 
 data "aws_ssm_parameter" "al2023" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
+}
+
+resource "aws_autoscaling_policy" "cpu" {
+  name                   = "capstone-cpu-tt"
+  autoscaling_group_name = aws_autoscaling_group.asg.name
+  policy_type            = "TargetTrackingScaling"
+
+  target_tracking_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ASGAverageCPUUtilization"
+    }
+    target_value = 50
+  }
 }
