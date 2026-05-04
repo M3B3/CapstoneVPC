@@ -20,10 +20,6 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 4.0"
     }
-    local = {
-      source  = "hashicorp/local"
-      version = "~> 2.0"
-    }
   }
 }
 
@@ -39,12 +35,6 @@ resource "tls_private_key" "deployer" {
 resource "aws_key_pair" "deployer" {
   key_name   = "capstone-key"
   public_key = tls_private_key.deployer.public_key_openssh
-}
-
-resource "local_sensitive_file" "private_key" {
-  content         = tls_private_key.deployer.private_key_pem
-  filename        = "${path.module}/capstone.pem"
-  file_permission = "0400"
 }
 
 module "vpc" {
@@ -145,4 +135,13 @@ resource "null_resource" "copy_key_to_bastion" {
 
 output "wordpress_url" {
   value = "http://${module.alb.wordpress_url}"
+}
+
+output "bastion_private_key" {
+  value     = tls_private_key.deployer.private_key_pem
+  sensitive = true
+}
+
+output "bastion_public_ip" {
+  value = module.bastion.public_ip
 }
